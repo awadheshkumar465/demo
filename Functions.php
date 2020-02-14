@@ -479,4 +479,35 @@ function create_custom_building_application(){
 		$results = ob_get_clean();
     return $results;
 }
+
+
+/* Insert Contact Information start */
+add_action('wpcf7_before_send_mail', 'save_form' );
+
+function save_form( $wpcf7 ) {
+  global $wpdb;
+  $submission = WPCF7_Submission::get_instance();
+  if ( $submission ) {
+      $submited = array();
+      $submited['title'] = $wpcf7->title();
+      $submited['posted_data'] = $submission->get_posted_data();
+   }
+
+   $post_id = wp_insert_post(array (
+     'post_type' => 'allleads',
+     'post_title' => $submited['posted_data']['title'],
+     'post_status' => 'publish',
+     'comment_status' => 'closed',   // if you prefer
+     'ping_status' => 'closed',      // if you prefer
+  ));
+  if ($post_id) {
+   // insert post meta
+    add_post_meta($post_id, 'first_name', $submited['posted_data']['fname']);
+    add_post_meta($post_id, 'last_name', $submited['posted_data']['lname']);
+    add_post_meta($post_id, 'email', $submited['posted_data']['email']);
+    add_post_meta($post_id, 'telephone', $submited['posted_data']['phone']);
+    add_post_meta($post_id, 'organization', $submited['posted_data']['organization']);
+    add_post_meta($post_id, 'business_name', $submited['posted_data']['Business']); 
+  }
+}
 https://www.solvusoft.com/en/update/drivers/laptop/hcl/me-icon/l-74-g/model-numbers/?__c=1
