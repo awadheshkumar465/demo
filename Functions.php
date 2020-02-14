@@ -533,6 +533,239 @@ add_action('login_head', 'add_favicon');
 add_action('admin_head', 'add_favicon');
 
 
+===================================================================================
+	
+function new_submenu_class($menu) {    
+    $menu = preg_replace('/ class="sub-menu"/','/ class="dropdown-menu" /',$menu);        
+    return $menu;      
+}
 
+add_filter('wp_nav_menu','new_submenu_class'); 
+
+
+
+function wps_change_role_name() {
+global $wp_roles;
+if ( ! isset( $wp_roles ) )
+$wp_roles = new WP_Roles();
+$wp_roles->roles['editor']['name'] = 'Team Member';
+$wp_roles->role_names['editor'] = 'Team Member';
+}
+add_action('init', 'wps_change_role_name');
+
+=========================================================================================
+	
+	/* Create Post Meta */
+function add_your_fields_meta_box() {
+  add_meta_box(
+    'your_fields_meta_box',
+    'Your Fields',
+    'show_your_fields_meta_box',
+    'document',
+    'normal',
+    'high'
+  );
+}
+add_action( 'add_meta_boxes', 'add_your_fields_meta_box' );
+
+function show_your_fields_meta_box() {
+  global $post;  
+  $meta = get_post_meta( $post->ID, 'subscriber_user_id', true ); 
+  $blogusers = get_users( 'role=subscriber' );
+  //print_r($blogusers); ?>
+  <input type="hidden" name="your_meta_box_nonce" value="<?php echo wp_create_nonce( basename(__FILE__) ); ?>">
+  <p>
+    <label for="subscriber_user_id[select]">All User List</label>
+    <br>
+    <select name="subscriber_user_id" id="subscriber_user_id">
+      <option value="<?php echo $meta; ?>">Select User</option>
+      <?php 
+      foreach ( $blogusers as $user ) { 
+        if($meta == $user->ID){$selected ='selected';} else{ $selected ='';} ?>
+        <option value="<?php echo $user->ID; ?>" <?php echo $selected; ?> ><?php echo esc_html( $user->user_email ); ?></option>
+      <?php } ?>
+    </select>
+  </p>
+<?php 
+}
+function save_your_fields_meta( $post_id ) {   
+  if( isset($_POST['your_meta_box_nonce']) && !wp_verify_nonce( $_POST['your_meta_box_nonce'], basename(__FILE__) ) ) {
+    return $post_id; 
+  }
+  if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+    return $post_id;
+  }
+  if (isset($_POST['document'])) { 
+    if ( 'page' === $_POST['document'] ) {
+      if ( !current_user_can( 'edit_page', $post_id ) ) {
+        return $post_id;
+      } 
+      elseif ( !current_user_can( 'edit_post', $post_id ) ) {
+        return $post_id;
+      }  
+    }
+  }
+  $old = get_post_meta( $post_id, 'subscriber_user_id', true );
+    if (isset($_POST['subscriber_user_id'])) { 
+      $new = $_POST['subscriber_user_id'];
+      if ( $new && $new !== $old ) {
+        
+        /* 03-12-2018 */
+        $user_id = $_POST['subscriber_user_id'];
+        $user_info = get_userdata($user_id);
+        $file  = get_field('add_documents');
+        $url = $file['url'];
+        $to = $user_info->user_email;
+        $first_name = $user_info->first_name;
+        //$to = "votivewp.awadhesh@gmail.com";
+        $subject = "Your Documents";
+        $message1 .= "<html><body style='font-family: 'open Sans';font-size: 14px; line-height:20px;'>";
+        $message1 .= "<div style='padding: 0 10px;max-width: 670px;margin: 0 auto; background-color: #fff;'>";
+        $message1 .= "<div style='max-width:670px;width:100%;margin:0 auto 30px;background: #fff;border:1px solid #ccc;'>";
+        $message1 .= "<div style='background: #fff; padding: 15px 40px; margin-bottom: 0px;'>";
+        $message1 .= "<div style='width: 88%;display:block;padding: 10px 0px 0px;background: #fff;'>";
+        $site_url = site_url();
+        $link_url = site_url('/my-documents/');
+        $message1 .= "<p style='text-align: left; padding: 5px 0px; margin:0px;'><a href='".$site_url."' target='_blank' style='color: #fff; font-size: 14px; text-transform: uppercase; text-decoration: none;'>";
+        $message1 .="<img src='".get_stylesheet_directory_uri()."/images/Advertrans_small.png' style='max-width: 100px;'/></a></p>";
+        $message1 .= "</div>";
+        $message1 .= "</div>";
+        $message1 .= "<div style='background: #fff;'>";
+        $message1 .= "<div style='padding: 0px 40px;'>";
+        $message1 .= "<p><strong> Hello ".ucfirst($first_name)." Sir,</strong></p>";
+        $message1 .= "<p>Our Team Members uploaded Digital Document for you, Please collect Document from below Link:</p>";
+        $message1 .= "<p><strong style='text-align:center;'><a href=".$link_url.">Click Here</a></strong></p>";
+        $message1 .= "<p></p>";
+        $message1 .= "<p></p>";
+        $message1 .= "<p></p>";
+        $message1 .= "</div>";  
+        $message1 .= "</div></div></div></body></html>";
+        
+        //$headers .= "MIME-Version: 1.0";
+        $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+        $headers .= "From: info@votivejoomla.in";
+
+        wp_mail($to,$subject,$message1,$headers);
+      /* 03-12-2018 */
+
+        update_post_meta( $post_id, 'subscriber_user_id', $new );
+      } 
+      elseif ( '' === $new && $old ) {
+        delete_post_meta( $post_id, 'subscriber_user_id', $old );
+      }
+    }
+}
+add_action( 'save_post', 'save_your_fields_meta' );
+
+============================================================================================================
+	function the_breadcrumb() {
+
+    $sep = ' » ';
+
+    if (!is_front_page()) { ?>
+        <ul class="breadcrumbs">
+        <li><a href="<?php echo get_option('home'); ?>">Home</a></li>
+        <?php
+        if (is_tax()){ ?>
+            <li><?php echo single_cat_title(); ?> </li>
+        <?php } 
+        elseif (is_archive()){
+            if ( is_day() ) {
+                printf( __( '%s', 'text_domain' ), get_the_date() );
+            } 
+            elseif ( is_month() ) {
+                printf( __( '%s', 'text_domain' ), get_the_date( _x( 'F Y', 'monthly archives date format', 'text_domain' ) ) );
+            } 
+            elseif ( is_year() ) {
+                printf( __( '%s', 'text_domain' ), get_the_date( _x( 'Y', 'yearly archives date format', 'text_domain' ) ) );
+            }
+            elseif ( is_archive() ) { ?>
+               <li><?php echo post_type_archive_title($prefix, false); ?></li>
+            <?php }
+            else { ?>
+                <li> <?php echo single_cat_title(); ?> </li>
+            <?php }
+        }
+        if (is_single()) { ?>
+            <li> <?php echo the_title(); ?></li>
+        <?php }
+        if (is_page()) { ?>
+            <li> <?php echo the_title(); ?></li>
+        <?php }
+        if (is_home()){
+            global $post;
+            $page_for_posts_id = get_option('page_for_posts');
+            if ( $page_for_posts_id ) { 
+                $post = get_page($page_for_posts_id);
+                setup_postdata($post);
+                the_title();
+                rewind_posts();
+            }
+        }
+        echo '</ul>';
+    }
+}
+
+
+remove_action('woocommerce_before_main_content', 'woocommerce_breadcrumb', 20);
+
+
+=======================================================================================================
+// Create the Custom Excerpts callback
+function html5wp_index($length) // Create 20 Word Callback for Index page Excerpts, call using html5wp_excerpt('html5wp_index');
+{
+    return 20;
+}
+function html5wp_excerpt($length_callback = '', $more_callback = '')
+{
+    global $post;
+    if (function_exists($length_callback)) {
+        add_filter('excerpt_length', $length_callback);
+    }
+    if (function_exists($more_callback)) {
+        add_filter('excerpt_more', $more_callback);
+    }
+    $output = get_the_excerpt();
+    $output = apply_filters('wptexturize', $output);
+    $output = apply_filters('convert_chars', $output);
+    $output = '<p>' . $output . '</p>';
+    echo $output;
+}
+
+=============================================================================================================
+add_filter('style_loader_tag', 'html5_style_remove')
+function html5_style_remove($tag)
+{
+    return preg_replace('~\s+type=["\'][^"\']++["\']~', '', $tag);
+}
+===============================================================================================================
+// Add our HTML5 Pagination
+add_action('init', 'html5wp_pagination'); 
+// Pagination for paged posts, Page 1, Page 2, Page 3, with Next and Previous Links, No plugin
+function html5wp_pagination()
+{
+    global $wp_query;
+    $big = 999999999;
+    echo paginate_links(array(
+        'base' => str_replace($big, '%#%', get_pagenum_link($big)),
+        'format' => '?paged=%#%',
+        'current' => max(1, get_query_var('paged')),
+        'total' => $wp_query->max_num_pages,
+        'prev_text'    => __('«'),
+        'next_text'    => __('»')
+    ));
+}
+
+====================================================================================================================
+// Remove width and height dynamic attributes to thumbnails
+add_filter('post_thumbnail_html', 'remove_thumbnail_dimensions', 10); 
+function remove_thumbnail_dimensions( $html )
+{
+    $html = preg_replace('/(width|height)=\"\d*\"\s/', "", $html);
+    return $html;
+}
+
+=========================================================================================================================
+	
 
 https://www.solvusoft.com/en/update/drivers/laptop/hcl/me-icon/l-74-g/model-numbers/?__c=1
