@@ -510,4 +510,16 @@ function save_form( $wpcf7 ) {
     add_post_meta($post_id, 'business_name', $submited['posted_data']['Business']); 
   }
 }
+
+// Remove particular page editor function
+add_action( 'admin_init', 'hide_editor' );
+function hide_editor() {
+  $post_id = $_GET['post'] ? $_GET['post'] : $_POST['post_ID'] ; 
+  if( !isset( $post_id ) ) return;
+  $pagetitle = get_the_title($post_id);
+  if($pagetitle == 'Home'){
+    remove_post_type_support('page', 'editor');
+  }
+}
+
 https://www.solvusoft.com/en/update/drivers/laptop/hcl/me-icon/l-74-g/model-numbers/?__c=1
